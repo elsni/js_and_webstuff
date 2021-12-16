@@ -1,37 +1,46 @@
+import { Coord } from "./coord.js";
+
 export class Graphics {
 
     canvasId: string;
-    width: number;
-    height: number;
-    xres: number;
-    yres: number;
-    ctx: CanvasRenderingContext2D;
-    xfact:number;
-    yfact:number;
+    private _width: number;
+    private _height: number;
+    private _xres: number;
+    private _yres: number;
+    private _ctx: CanvasRenderingContext2D;
+    private _xfact: number;
+    private _yfact: number;
 
-    constructor(canvasId: string, xres:number, yres:number) {
-        var canvas = <HTMLCanvasElement> document.getElementById(canvasId);
-        this.width = canvas.width;
-        this.height = canvas.height;
+    constructor(canvasId: string, xres: number, yres: number) {
+        var canvas = <HTMLCanvasElement>document.getElementById(canvasId);
+        this._width = canvas.width;
+        this._height = canvas.height;
         this.canvasId = canvasId;
-        this.ctx = canvas.getContext("2d");
-        this.xres=xres;
-        this.yres=yres;
-        this.xfact=this.width / xres;
-        this.yfact=this.height / yres;
+        this._ctx = canvas.getContext("2d");
+        this._xres = xres;
+        this._yres = yres;
+        this._xfact = this._width / xres;
+        this._yfact = this._height / yres;
     }
 
-    clear() {
-        var oldstyle = this.ctx.fillStyle;
-        this.ctx.fillStyle = "#ffffff";
-        this.ctx.fillRect(0,0,this.width, this.height);
-        this.ctx.fillStyle = oldstyle;
+    get xres(): number { return this._xres; }
+    get yres(): number { return this._yres; }
+
+    public clear() {
+        var oldstyle = this._ctx.fillStyle;
+        this._ctx.fillStyle = "#ffffff";
+        this._ctx.fillRect(0, 0, this._width, this._height);
+        this._ctx.fillStyle = oldstyle;
     }
-    plot(x:number,y:number) {
-        this.ctx.fillRect(x * this.xfact,y * this.yfact,((x+1)*this.xfact)-1, ((y+1)*this.yfact)-1);
+    public plot(p:Coord) {
+        this._ctx.fillRect(p.x * this._xfact, p.y * this._yfact, this._xfact - 1, this._yfact - 1);
+    }
+    public box(p:Coord) {
+        this._ctx.strokeRect(p.x * this._xfact, p.y * this._yfact, this._xfact - 1, this._yfact - 1);
     }
 
-    color(col:string) {
-        this.ctx.fillStyle = col;
+    public color(col: string) {
+        this._ctx.fillStyle = col;
+        this._ctx.strokeStyle = col;
     }
 }

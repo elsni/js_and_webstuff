@@ -1,25 +1,31 @@
 export class Graphics {
     constructor(canvasId, xres, yres) {
         var canvas = document.getElementById(canvasId);
-        this.width = canvas.width;
-        this.height = canvas.height;
+        this._width = canvas.width;
+        this._height = canvas.height;
         this.canvasId = canvasId;
-        this.ctx = canvas.getContext("2d");
-        this.xres = xres;
-        this.yres = yres;
-        this.xfact = this.width / xres;
-        this.yfact = this.height / yres;
+        this._ctx = canvas.getContext("2d");
+        this._xres = xres;
+        this._yres = yres;
+        this._xfact = this._width / xres;
+        this._yfact = this._height / yres;
     }
+    get xres() { return this._xres; }
+    get yres() { return this._yres; }
     clear() {
-        var oldstyle = this.ctx.fillStyle;
-        this.ctx.fillStyle = "#ffffff";
-        this.ctx.fillRect(0, 0, this.width, this.height);
-        this.ctx.fillStyle = oldstyle;
+        var oldstyle = this._ctx.fillStyle;
+        this._ctx.fillStyle = "#ffffff";
+        this._ctx.fillRect(0, 0, this._width, this._height);
+        this._ctx.fillStyle = oldstyle;
     }
-    plot(x, y) {
-        this.ctx.fillRect(x * this.xfact, y * this.yfact, ((x + 1) * this.xfact) - 1, ((y + 1) * this.yfact) - 1);
+    plot(p) {
+        this._ctx.fillRect(p.x * this._xfact, p.y * this._yfact, this._xfact - 1, this._yfact - 1);
+    }
+    box(p) {
+        this._ctx.strokeRect(p.x * this._xfact, p.y * this._yfact, this._xfact - 1, this._yfact - 1);
     }
     color(col) {
-        this.ctx.fillStyle = col;
+        this._ctx.fillStyle = col;
+        this._ctx.strokeStyle = col;
     }
 }
