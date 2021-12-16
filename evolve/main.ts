@@ -1,3 +1,39 @@
+
+class Coord {
+    private _x: number = 0;
+    public get x(): number {
+        return this._x;
+    }
+    public set x(value: number) {
+        this._x = value;
+    }
+    private _y: number = 0;
+    public get y(): number {
+        return this._y;
+    }
+    public set y(value: number) {
+        this._y = value;
+    }
+
+    constructor(x: number, y: number) {
+        this._x = x;
+        this._y = y;
+    }
+
+    isAround(p:Coord ) : boolean {
+        return (Math.abs(p.x-this._x) ===1 || Math.abs(p.y-this._y) ===1);
+    }
+
+    isEqual(p:Coord) :boolean {
+        return ((p.x===this._x) && (p.y===this._y));
+    }
+
+    toString():string {
+        return '('+this._x+","+this._y+")";
+    }
+}
+
+
 class Graphics {
 
     canvasId: string;
@@ -30,11 +66,11 @@ class Graphics {
         this._ctx.fillRect(0, 0, this._width, this._height);
         this._ctx.fillStyle = oldstyle;
     }
-    public plot(x: number, y: number) {
-        this._ctx.fillRect(x * this._xfact, y * this._yfact, this._xfact - 1, this._yfact - 1);
+    public plot(p:Coord) {
+        this._ctx.fillRect(p.x * this._xfact, p.y * this._yfact, this._xfact - 1, this._yfact - 1);
     }
-    public box(x: number, y: number) {
-        this._ctx.strokeRect(x * this._xfact, y * this._yfact, this._xfact - 1, this._yfact - 1);
+    public box(p:Coord) {
+        this._ctx.strokeRect(p.x * this._xfact, p.y * this._yfact, this._xfact - 1, this._yfact - 1);
     }
 
     public color(col: string) {
@@ -43,27 +79,12 @@ class Graphics {
     }
 }
 
-class Coord {
-    private _x: number = 0;
-    public get x(): number {
-        return this._x;
-    }
-    public set x(value: number) {
-        this._x = value;
-    }
-    private _y: number = 0;
-    public get y(): number {
-        return this._y;
-    }
-    public set y(value: number) {
-        this._y = value;
-    }
-
-    constructor(x: number, y: number) {
-        this._x = x;
-        this._y = y;
-    }
-}
+// Offsets for all 8 cells around a coordinate
+const around = [
+    new Coord(-1,-1), new Coord(0,-1), new Coord(1,-1), 
+    new Coord(-1, 0),                  new Coord(1, 0), 
+    new Coord(-1, 1), new Coord(0, 1), new Coord(1, 1), 
+]
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -89,18 +110,42 @@ class Field {
         }
     }
 
-    public isFree(x: number, y: number): boolean {
-        return !this._creatures.find(element => (element.x === x) && (element.y === y));
+    public isFree(cellCoord: Coord): boolean {
+        if (!this.isValidCoord(cellCoord)) return false;
+        return !this._creatures.find(element => element.pos.isEqual(cellCoord) )
+    }
+
+    public isValidCoord(cellCoord:Coord): boolean {
+        return((cellCoord.x>=0 && cellCoord.x<this.g.xres)&&(cellCoord.y>=0 && cellCoord.y<this.g.yres))
     }
 
     // gets a list of nearby creatures
-    public getNearbyCreatures(x: number, y: number): Creature[] {
-        return this._creatures.filter(element => (element.x >= x - 1) && (element.x <= x + 1) && (element.y >= y - 1) && (element.y <= y + 1) && !(element.x == x && element.y == y));
+    public getNearbyCreatures(cellCoord: Coord): Creature[] {
+        return this._creatures.filter(element => element.pos.isAround(cellCoord));
+    }
+
+    // Returns the coord of the nearest food item
+    public getNearestFoodCoord(cellCoord: Coord): Coord {
+        var result: Coord = null;
+        var distance = 1000;
+        for (var i = 0; i < this._g.xres; i++) {
+            for (var j = 0; j < this._g.yres; j++) {
+                if (this._food[i][j] > 0) {
+                    var didx = Math.sqrt(Math.abs(cellCoord.x - i) ^ 2 + Math.abs(cellCoord.y - j) ^ 2);
+                    if (didx < distance) {
+                        distance = didx;
+                        result = new Coord(i, j);
+                    }
+                }
+            }
+        }
+        return result;
     }
 
     // gets all free cells around a coordinate
-    public getNearbyFreeCells(x: number, y: number): Coord[] {
+    public getNearbyFreeCells(cellCoord: Coord): Coord[] {
         var result: Array<Coord> = [];
+        /*
         for (var i = x - 1; i <= x + 1; i++) {
             for (var j = y - 1; j <= y + 1; j++) {
                 if (i >= 0 && i < this._g.xres) {
@@ -114,6 +159,8 @@ class Field {
                 }
             }
         }
+        */
+        around.forEach(crd => {if (this.isFree(crd)) result.push(crd);})
         return result;
     }
 
@@ -131,7 +178,6 @@ class Field {
     }
 
     public draw() {
-
         // Draw food
         for (var i: number = 0; i < this._g.xres; i++) {
             for (var j: number = 0; j < this._g.yres; j++) {
@@ -141,7 +187,7 @@ class Field {
                     console.log("food at " + i + "," + j + " amount:" + food);
                     // the more food, the darker
                     this._g.color(this._foodcolor[food]);
-                    this._g.box(i, j);
+                    this._g.box(new Coord(i, j));
                 }
             }
         }
@@ -168,8 +214,7 @@ class Creature {
 
     private _xmax: number;
     private _ymax: number;
-    private _x: number;
-    private _y: number;
+    private _pos: Coord;
     private _field: Field;
 
     public get field(): Field {
@@ -179,17 +224,11 @@ class Creature {
         this._field = value;
     }
 
-    public get x(): number {
-        return this._x;
+    public get pos(): Coord {
+        return this._pos;
     }
-    public set x(value: number) {
-        this._x = value;
-    }
-    public get y(): number {
-        return this._y;
-    }
-    public set y(value: number) {
-        this._y = value;
+    public set pos(value: Coord) {
+        this._pos = value;
     }
 
     public get xmax(): number {
@@ -259,8 +298,8 @@ class Creature {
     // --------------------------------------------------------------
     private randomize() {
 
-        this._x = this.getRnd(this._xmax);
-        this._y = this.getRnd(this._ymax);
+        this._pos.x = this.getRnd(this._xmax);
+        this._pos.y = this.getRnd(this._ymax);
         this._progmem = this.getRnd(10);
         this._progbuff = new Array(this._progmem);
 
@@ -380,7 +419,7 @@ class Creature {
     }
     // --------------------------------------------------------------
     public printStats() {
-        console.log("Pos (x,y)...:" + this._x + "," + this._y);
+        console.log("Pos (x,y)...:" + this._pos.toString());
         console.log("Color.......:" + this._color);
         console.log("Energy......:" + this._energy);
         console.log("Age.........:" + this._age);
@@ -408,7 +447,38 @@ class Creature {
 
     public draw() {
         this._field.g.color(this._color);
-        this._field.g.plot(this._x, this._y);
+        this._field.g.plot(this._pos);
+    }
+
+    private moveToRandomFreeCell() {
+        var freecells = this.field.getNearbyFreeCells(this._pos);
+        if (freecells.length > 0) {
+            var idx = this.getRnd(freecells.length);
+            this._pos = freecells[idx];
+            this._energy -= (10 - this._stats.Movement);
+        }
+    }
+
+    private fleeFromCreature() {
+        // only flee if creature is nearby
+        var nearbycreatures = this._field.getNearbyCreatures(this._pos);
+        if (nearbycreatures.length > 0) {
+            // Get list of free cells
+            var freecells = this._field.getNearbyFreeCells(this._pos);
+            var oldlength = nearbycreatures.length;
+            var dest = null;
+            // find field with less creatures in reach
+            freecells.forEach(coord => {
+                if (this._field.getNearbyCreatures(coord).length < oldlength) {
+                    dest = coord;
+                }
+            });
+            // if we found one with less creatures, go there, otherwise stay and pray for mercy
+            if (dest != null) {
+                this._pos = dest;
+                this._energy -= (10 - this._stats.Movement);
+            }
+        }
     }
 
     // --------------------------------------------------------------
@@ -426,32 +496,35 @@ class Creature {
                 this._energy += this._stats.Harvest;
                 break;
             case 2:
-                // move in opposite direction if another creature is nearby
-                var nearcreature = this._field.getNearbyCreatures(this._x, this._y);
-
+                // move to the field with the least creatures nearby if creature is near
+                if (this._field.getNearbyCreatures(this._pos).length > 0) {
+                    this.fleeFromCreature();
+                }
                 break;
             case 3:
+                // TODO
                 // produce food item in nearby field if energy level is sufficient
                 break;
             case 4:
-                // move in random position if not already occupied by creature
-                // todo: get random cell from free-cells-around-me-list
-                this._x += this.getRnd(3) - 2;
-                this._y += this.getRnd(3) - 2;
-                this._energy -= (10 - this._stats.Movement);
+                // move in random position to a non occupied field
+                this.moveToRandomFreeCell();
                 break;
             case 5:  // move food
+                // TODO
                 // move towards nearest food item.
                 // if already next to a food item - dont move.
                 break;
             case 6: // hunt
+                // TODO
                 // move towards nearest creature
                 // if already next to a creature - dont move.
                 break;
             case 7: // attack
+                // TODO
                 // attack all creatures in adjacent cells
                 break;
             case 8: // eat
+                // TODO
                 // eat food of one adjacent cell if available.
                 break;
         }
@@ -476,24 +549,10 @@ class Evolve {
 
         var f = new Field(this.g);
 
-        var c1 = new Creature(f);
-        var c2 = new Creature(f);
-        var c3 = new Creature(f);
-        c1.x = 20;
-        c1.y = 20;
-        c2.x = 21;
-        c2.y = 21;
-        c3.x = 19;
-        c3.y = 20;
-        f.addFood(16, 16, 5);
-        f.addFood(34, 31, 1);
-        f.addFood(66, 74, 8);
-        f.addFood(99, 99, 4);
-        f.addCreature(c1);
-        f.addCreature(c2);
-        f.addCreature(c3);
+        for (var i = 0; i <= 500; i++) {
+            f.addCreature();
+        }
         f.draw();
-        console.log(f.getNearbyFreeCells(21, 22));
 
     };
 

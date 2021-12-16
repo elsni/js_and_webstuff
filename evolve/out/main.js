@@ -69,9 +69,28 @@ class Field {
     isFree(x, y) {
         return !this._creatures.find(element => (element.x === x) && (element.y === y));
     }
+    // gets a list of nearby creatures
     getNearbyCreatures(x, y) {
         return this._creatures.filter(element => (element.x >= x - 1) && (element.x <= x + 1) && (element.y >= y - 1) && (element.y <= y + 1) && !(element.x == x && element.y == y));
     }
+    // Returns the coord of the nearest food item
+    getNearestFoodCoord(x, y) {
+        var result = null;
+        var distance = 1000;
+        for (var i = 0; i < this._g.xres; i++) {
+            for (var j = 0; j < this._g.yres; j++) {
+                if (this._food[i][j] > 0) {
+                    var didx = Math.sqrt(Math.abs(x - i) ^ 2 + Math.abs(y - j) ^ 2);
+                    if (didx < distance) {
+                        distance = didx;
+                        result = new Coord(i, j);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+    // gets all free cells around a coordinate
     getNearbyFreeCells(x, y) {
         var result = [];
         for (var i = x - 1; i <= x + 1; i++) {
@@ -343,6 +362,35 @@ class Creature {
         this._field.g.color(this._color);
         this._field.g.plot(this._x, this._y);
     }
+    moveToRandomFreeCell() {
+        var freecells = this.field.getNearbyFreeCells(this._x, this._y);
+        if (freecells.length > 0) {
+            var idx = this.getRnd(freecells.length);
+            var dest = freecells[idx];
+            this._x = dest.x;
+            this._y = dest.y;
+            this._energy -= (10 - this._stats.Movement);
+        }
+    }
+    fleeFromCreature() {
+        if (this._field.getNearbyCreatures(this._x, this._y).length > 0) {
+            var freecells = this._field.getNearbyFreeCells(this._x, this._y);
+            var oldlength = 9;
+            var dest = null;
+            // find field with the least number of creatures in reach
+            freecells.forEach(coord => {
+                if (this._field.getNearbyCreatures(coord.x, coord.y).length < oldlength) {
+                    dest = coord;
+                }
+            });
+            // if we found one, go there, otherwise stay and pray for mercy
+            if (dest != null) {
+                this._x = dest.x;
+                this._y = dest.y;
+                this._energy -= (10 - this._stats.Movement);
+            }
+        }
+    }
     // --------------------------------------------------------------
     tick() {
         var instr = this._progbuff[this._pc];
@@ -358,18 +406,17 @@ class Creature {
                 this._energy += this._stats.Harvest;
                 break;
             case 2:
-                // move in opposite direction if another creature is nearby
-                var nearcreature = this._field.getNearbyCreatures(this._x, this._y);
+                // move to the field with the least creatures nearby if creature is near
+                if (this._field.getNearbyCreatures(this._x, this._y).length > 0) {
+                    this.fleeFromCreature();
+                }
                 break;
             case 3:
                 // produce food item in nearby field if energy level is sufficient
                 break;
             case 4:
-                // move in random position if not already occupied by creature
-                // todo: get random cell from free-cells-around-me-list
-                this._x += this.getRnd(3) - 2;
-                this._y += this.getRnd(3) - 2;
-                this._energy -= (10 - this._stats.Movement);
+                // move in random position to a non occupied field
+                this.moveToRandomFreeCell();
                 break;
             case 5: // move food
                 // move towards nearest food item.
@@ -398,24 +445,10 @@ class Evolve {
     ;
     main() {
         var f = new Field(this.g);
-        var c1 = new Creature(f);
-        var c2 = new Creature(f);
-        var c3 = new Creature(f);
-        c1.x = 20;
-        c1.y = 20;
-        c2.x = 21;
-        c2.y = 21;
-        c3.x = 19;
-        c3.y = 20;
-        f.addFood(16, 16, 5);
-        f.addFood(34, 31, 1);
-        f.addFood(66, 74, 8);
-        f.addFood(99, 99, 4);
-        f.addCreature(c1);
-        f.addCreature(c2);
-        f.addCreature(c3);
+        for (var i = 0; i <= 500; i++) {
+            f.addCreature();
+        }
         f.draw();
-        console.log(f.getNearbyFreeCells(21, 22));
     }
     ;
 }
