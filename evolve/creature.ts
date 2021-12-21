@@ -37,8 +37,10 @@ export class Creature {
     private _lifespan: number = 100;     // lifespan cycles
     private _age: number = 0;            // age of cycles
     private _progmem: number = 5;        // Number of instructions program memory
-    private _pc: number = 0;               // Program counter
-    private _energy: number = 100;        // Amount of energy
+    private _pc: number = 0;             // Program counter
+    private _energy: number = 100;       // Amount of energy
+    private _reproEnergy = 40            // Amount of Energy needed for reproduction
+    private _productionEnergy = 30       // Amount of Energy needed for production
     private _progbuff: Array<number> = new Array(this._progmem);
     private _color: string = "#ffffff";
     private _hidden = false;
@@ -126,12 +128,12 @@ export class Creature {
 
     // --------------------------------------------------------------
     private randomize() {
-        this._progmem = this.getRnd(10);
+        this._progmem = toolbox.getRandomInt(1,10);
         this._progbuff = new Array(this._progmem);
 
         // randomize programm
         for (var i: number = 0; i < this._progmem; i++) {
-            this._progbuff[i] = this.getRnd(this.instructions.length);
+            this._progbuff[i] = toolbox.getRandomInt(0,this.instructions.length-1);
         }
 
         // shuffle Stats
@@ -140,7 +142,7 @@ export class Creature {
         }
 
         // randomize lifespan
-        this._lifespan = this.getRnd(200) + 20;
+        this._lifespan = toolbox.getRandomInt(20,300);
 
         this.calculateColor();
     }
@@ -154,8 +156,8 @@ export class Creature {
         var va = 0, vb = 0;
         do {
             do {
-                a = this.getRnd(num);
-                b = this.getRnd(num);
+                a = toolbox.getRandomInt(0,num-1);
+                b = toolbox.getRandomInt(0,num-1);
             } while (a === b);
             va = this._stats[keys[a]] + 1;
             vb = this._stats[keys[b]] - 1;
@@ -165,10 +167,22 @@ export class Creature {
         this._stats[keys[a]] = va;
         this._stats[keys[b]] = vb;
     }
-    
+
     // --------------------------------------------------------------
-    private getRnd(max: number): number {
-        return Math.floor(Math.random() * max);
+    private reproduce() {
+        var childpos = this._field.getRandomAdjacentFreeCell(this._pos);
+
+        // chreate mutated child
+        var child = new Creature(this,true);
+
+        // share energy
+        child.energy = Math.floor(this._energy/2);
+        this._energy-=child.energy;
+
+        child.field = this._field;
+        child.pos = childpos;
+        this._field.addCreature(child);
+        //this.field.updateCreature(this);
     }
 
     // --------------------------------------------------------------
@@ -178,27 +192,37 @@ export class Creature {
         this.alterStats();
 
         // sometimes alter lifespan
-        if (this.getRnd(3) == 1) {
-            this._lifespan += this.getRnd(11) - 5;
+        if (toolbox.getRandomInt(1,3) == 1) {
+            this._lifespan += toolbox.getRandomInt(-5,5);
             if (this._lifespan < 20) this._lifespan = 20;
             if (this._lifespan > 300) this._lifespan = 300;
         }
+
+        // sometimes alter lifespan
+        if (toolbox.getRandomInt(1,3) == 1) {
+            this._reproEnergy += toolbox.getRandomInt(-2,2);
+            if (this._reproEnergy < 10) this._reproEnergy = 10;
+            if (this._reproEnergy > 80) this._reproEnergy = 80;
+        }
         // rarely change program size
-        if (this.getRnd(10) == 2) {
+        if (toolbox.getRandomInt(1,10) == 1) {
             var oldpgm = this._progmem;
-            this._progmem += this.getRnd(3) - 1;
+            this._progmem += toolbox.getRandomInt(-1,1);
 
             // if progmem gets bigger, push one random instruction to widen the array
             if (this._progmem > oldpgm) {
-                this._progbuff.push(this.getRnd(this.instructions.length));
+                this._progbuff.push(toolbox.getRandomInt(0,this.instructions.length-1));
             }
+            if(this._pc>=this._progmem) this._pc=0;
         }
 
         // sometimes change one program instruction to a random one
-        if (this.getRnd(5) == 1) {
-            var instidx = this.getRnd(this._progmem);
-            this._progbuff[instidx] = this.getRnd(this.instructions.length);
+        if (toolbox.getRandomInt(1,5) == 1) {
+            var instidx = toolbox.getRandomInt(0,this._progmem-1);
+            this._progbuff[instidx] = toolbox.getRandomInt(0,this.instructions.length-1);
         }
+
+        this.calculateColor();
 
     }
     // --------------------------------------------------------------
@@ -296,7 +320,7 @@ export class Creature {
         if (!this.hasField) return;
         var freecells = this.field.getNearbyFreeCells(this._pos);
         if (freecells.length > 0) {
-            var idx = this.getRnd(freecells.length);
+            var idx = toolbox.getRandomInt(0,freecells.length-1);
             this._pos = freecells[idx];
             this._energy -= (10 - this._stats.Movement);
         }
@@ -339,9 +363,9 @@ export class Creature {
     // --------------------------------------------------------------
 
     public moveTowards(c:Coord) {
+        if (c) {
+        console.log("move towards "+c);
         if (this.pos.isEqual(c) || this.pos.isNextTo(c)) return;
-
-        this._energy -= (10 - this._stats.Movement);
         var dx= Math.abs(this.pos.x-c.x)
         var dy= Math.abs(this.pos.y-c.y)
         if(dy>dx) {
@@ -351,65 +375,93 @@ export class Creature {
             this.pos.x++;
         }
     }
+    }
 
+    // --------------------------------------------------------------
     public attack(cr:Creature) {
-
+        var damage = Math.max(this._stats.Attack - cr.stats.Defense,0);
+        var damage_received = Math.max(cr.stats.Poison - this._stats.Defense,0);
+        cr.energy -= damage;
+        this._energy -= damage_received;
+        //this._field.updateCreature(this);
+        //cr.field.updateCreature(cr);
     }
 
     // --------------------------------------------------------------
     tick() {
         if(!this.hasField) return;
         var instr = this._progbuff[this._pc];
-        this._pc++;
-        if (this._pc == this._progmem) this._pc = 0;
-        this._energy -= (10-this._stats.Consumption)/4;
-
+        console.log("Instruction: ("+instr+")"+this.instructions[instr]);
         switch (instr) {
             case 0:
                 //wait -  do nothing
                 break;
-            case 1:
+            case 1: // harvest energy
                 // harvest Energy according to efficiency
                 this._energy += this._stats.Harvest;
                 break;
-            case 2:
+            case 2: // watch and flee
                 // move to the field with the least creatures nearby if creature is near
                 if (this._field.getNearbyCreatures(this._pos).length > 0) {
                     this.fleeFromCreature();
                 }
                 break;
-            case 3:
+            case 3:  // produce
                 // TODO
+                if (this._energy >= this._productionEnergy) {
+                    var foodpos = this._field.getRandomAdjacentCell(this._pos);
+                    this._field.addFood(foodpos,1);
+                    this._energy -= (10-this._stats.Production);
+                }
                 // produce food item in nearby field if energy level is sufficient
                 break;
-            case 4:
+            case 4:  // move Random
                 // move in random position to a non occupied field
                 this.moveToRandomFreeCell();
+                this._energy -= (10 - this._stats.Movement);
+
                 break;
             case 5:  // move food
                 // move towards nearest food item.
                 // if already next to a food item - dont move.
                 this.moveTowards(this._field.getNearestFoodCoord(this._pos));
+                this._energy -= (10 - this._stats.Movement);
+
                 break;
             case 6: // hunt
                 // move towards nearest creature
                 // if already next to a creature - dont move.
                 this.moveTowards(this._field.getNearestCreatureCoord(this._pos));
+                this._energy -= (10 - this._stats.Movement);
+
                 break;
             case 7: // attack
-                // TODO
                 // attack one of the creatures in adjacent cells
                 var creatures = this._field.getNearbyCreatures(this._pos);
                 if (creatures.length > 0) {
                     var idx = toolbox.getRandomInt(0,(creatures.length-1));
                     this.attack(creatures[idx]);
-
                 }
                 break;
             case 8: // eat
-                // TODO
+                var foodval = this._field.consumeBestFoodAround(this._pos);
+                this._energy += foodval *(5+2*this._stats.Digestion);
                 // eat food of one adjacent cell if available.
                 break;
         }
+
+        // advance program counter
+        this._pc++;
+        if (this._pc >= this._progmem) this._pc = 0;
+        // subtract base energy consumption
+        this._energy -= (10-this._stats.Consumption)/4;
+        if (this._age>=(10-this._stats.Reproduction)*5 && this._energy >= this._reproEnergy) {
+            this.reproduce();
+        }
+
+        this._age++;
+        // die of age or of low energy.
+        if (this._age > this._lifespan || this._energy<=0 ) this.die();
+
     }
 }

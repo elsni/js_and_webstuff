@@ -1,3 +1,4 @@
+import { toolbox } from "./toolbox.js";
 export class Coord {
     constructor(x, y) {
         this._x = 0;
@@ -42,7 +43,7 @@ export class Coord {
         return new Coord(this._x + c.x, this._y + c.y);
     }
     static getRandom(maxX, maxY) {
-        return new Coord(Math.floor(Math.random() * maxX), Math.floor(Math.random() * maxY));
+        return new Coord(toolbox.getRandomInt(0, maxX), toolbox.getRandomInt(0, maxY));
     }
 }
 Coord._around = [

@@ -1,6 +1,7 @@
 import { Coord } from "./coord.js";
 import { Creature } from "./creature.js";
 import { Food } from "./food.js";
+import { toolbox } from "./toolbox.js";
 export class Field {
     // ---------------------------------------------------------------------------------------------
     constructor(g) {
@@ -13,33 +14,28 @@ export class Field {
         this._creatures = [];
         this._food = [];
         this._g = g;
-        /*
-        for (var i: number = 0; i < g.xres; i++) {
-            this._food[i] = [];
-            for (var j: number = 0; j < g.yres; j++) {
-                this._food[i][j] = 0;
-            }
-        }
-        */
     }
     get g() {
         return this._g;
     }
     // ---------------------------------------------------------------------------------------------
+    // Checks if a cell is free (no creature there)
     isFree(cellCoord) {
         if (!this.isValidCoord(cellCoord))
             return false;
         return !this._creatures.find(element => (element.pos.isEqual(cellCoord) && !element.hidden));
     }
     // ---------------------------------------------------------------------------------------------
+    // check if a coordinate is within the field boundaries
     isValidCoord(cellCoord) {
         return ((cellCoord.x >= 0 && cellCoord.x < this.g.xres) && (cellCoord.y >= 0 && cellCoord.y < this.g.yres));
     }
     // ---------------------------------------------------------------------------------------------
+    // return a random free cell within field boundaries
     getRandomFreeCell() {
         var result;
         do {
-            result = Coord.getRandom(this._g.xres, this._g.yres);
+            result = Coord.getRandom(this._g.xres - 1, this._g.yres - 1);
         } while (!this.isFree(result));
         return result;
     }
@@ -59,18 +55,43 @@ export class Field {
         return result;
     }
     // ---------------------------------------------------------------------------------------------
+    // return a list of all creatures
     get Creatures() {
         return this._creatures;
     }
     // ---------------------------------------------------------------------------------------------
-    // gets a list of nearby creatures
+    // return the coordinates of a random valid cell next to a given cell
+    getRandomAdjacentCell(cellCoord) {
+        var result;
+        do {
+            var idx = toolbox.getRandomInt(0, 7);
+            var cellOff = Coord.aroundOffsets[idx];
+            result = cellCoord.offset(cellOff);
+        } while (!this.isValidCoord(result));
+        return result;
+    }
+    // ---------------------------------------------------------------------------------------------
+    // return the coordinates of a random valid cell next to a given cell
+    getRandomAdjacentFreeCell(cellCoord) {
+        var freeCells = this.getNearbyFreeCells(cellCoord);
+        var result;
+        if (freeCells.length < 1) {
+            result = this.getRandomAdjacentCell(cellCoord);
+        }
+        else {
+            result = freeCells[toolbox.getRandomInt(0, freeCells.length - 1)];
+        }
+        return result;
+    }
+    // ---------------------------------------------------------------------------------------------
+    // return a list of creatures next to a given cell
     getNearbyCreatures(cellCoord) {
         return this._creatures.filter(function (element) {
             return (element.pos.isNextTo(cellCoord) && !element.hidden);
         });
     }
     // ---------------------------------------------------------------------------------------------
-    // Returns the coord of the nearest food item
+    // Return the coord of the nearest food item
     getNearestFoodCoord(cellCoord) {
         var result;
         var distance = 1000000;
@@ -84,7 +105,7 @@ export class Field {
         return result;
     }
     // ---------------------------------------------------------------------------------------------
-    // Get coordinates of the nearest creature
+    // return coordinates of the nearest creature
     getNearestCreatureCoord(cellCoord) {
         var result;
         var distance = 1000000;
@@ -98,7 +119,7 @@ export class Field {
         return result;
     }
     // ---------------------------------------------------------------------------------------------
-    // gets all free (no creature there) cells around a coordinate
+    // return all free (no creature there) cells around a coordinate
     getNearbyFreeCells(cellCoord) {
         var result = [];
         Coord.aroundOffsets.forEach(crd => { if (this.isFree(cellCoord.offset(crd)))
@@ -118,7 +139,9 @@ export class Field {
                 result = f.amount;
             }
         });
-        this.consumeFood(resultcoord);
+        if (resultcoord) {
+            this.consumeFood(resultcoord);
+        }
         return result;
     }
     // ---------------------------------------------------------------------------------------------
@@ -135,7 +158,12 @@ export class Field {
         return result;
     }
     // ---------------------------------------------------------------------------------------------
+    // add food to a given cell
     addFood(pos, amount) {
+        if (amount < 0) {
+            console.log("AMOUNT IS NEGATIVE!!!");
+            var a = 4 / 0;
+        }
         var found = false;
         for (var i = 0; i < this._food.length; i++) {
             if (this._food[i].pos.isEqual(pos)) {
@@ -148,11 +176,11 @@ export class Field {
         }
     }
     // ---------------------------------------------------------------------------------------------
-    // add a given or random Creature to the field if the cell is free.
+    // put a given or random Creature to the field if the cell is free.
+    // if the cell is not free, put it to a random free position on the field
     addCreature(c) {
         var cr;
         if (c) {
-            c.field = this;
             cr = c;
         }
         else {
@@ -161,7 +189,40 @@ export class Field {
         }
         ;
         if (this.isFree(cr.pos)) {
+            cr.field = this;
             this._creatures.push(cr);
+        }
+    }
+    // ---------------------------------------------------------------------------------------------
+    // update an existing creature
+    updateCreature(c) {
+        for (var i = 0; i < this._creatures.length; i++) {
+            if (this._creatures[i].pos.isEqual(c.pos)) {
+                this._creatures[i] = c;
+            }
+        }
+    }
+    // ---------------------------------------------------------------------------------------------
+    // ticke: advance one clock cycle
+    tick() {
+        console.log("Tick");
+        // tick every creature
+        this._creatures.forEach(creature => creature.tick());
+        var bodycount = 0;
+        // decompose dead bodies
+        this._creatures = this._creatures.filter(creature => {
+            var keep = true;
+            if (creature.dead) {
+                bodycount++;
+                keep = false;
+                this.addFood(creature.pos, Math.max(Math.floor(creature.energy / 2), 0));
+            }
+            return keep;
+        });
+        if (bodycount > 0) {
+            for (var i = 0; i < bodycount; i++) {
+                this.addCreature();
+            }
         }
     }
     // ---------------------------------------------------------------------------------------------

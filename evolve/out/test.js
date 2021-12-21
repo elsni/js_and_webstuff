@@ -52,6 +52,9 @@ class Test {
         t.expectNum(2, cr2.length, "getNearbyCreatures 2");
         t.expectCoordEitherOr(c1010, cr2[0].pos, cr2[1].pos, "getNearbyCreatures 3");
         t.expectCoordEitherOr(c1110, cr2[0].pos, cr2[1].pos, "getNearbyCreatures 4");
+        cr2[0].energy = 77;
+        var cr3 = f.getNearbyCreatures(new Coord(10, 9));
+        t.expectNum(77, cr3[0].energy, "Creature object equality test");
         t.expectTrue(f.isFree(c1111), "isFree 1");
         t.expectFalse(f.isFree(c1010), "isFree 2");
         t.expectTrue(f.isValidCoord(c1010), "isValidCoord 1");

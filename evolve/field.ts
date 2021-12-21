@@ -88,6 +88,20 @@ export class Field {
     }
 
     // ---------------------------------------------------------------------------------------------
+    // return the coordinates of a random valid cell next to a given cell
+    public getRandomAdjacentFreeCell(cellCoord: Coord): Coord {
+        var freeCells = this.getNearbyFreeCells(cellCoord);
+        var result: Coord;
+        if (freeCells.length<1) {
+            result = this.getRandomAdjacentCell(cellCoord);
+        } 
+        else {
+            result = freeCells[toolbox.getRandomInt(0,freeCells.length-1)];
+        }
+        return result;
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // return a list of creatures next to a given cell
     public getNearbyCreatures(cellCoord: Coord): Creature[] {
         return this._creatures.filter(function (element) {
@@ -147,7 +161,9 @@ export class Field {
                 result = f.amount;
             }
         })
-        this.consumeFood(resultcoord);
+        if (resultcoord) {
+            this.consumeFood(resultcoord);
+        }
         return result;
     }
 
@@ -168,6 +184,11 @@ export class Field {
     // ---------------------------------------------------------------------------------------------
     // add food to a given cell
     public addFood(pos: Coord, amount: number) {
+        if (amount<0) {
+            console.log("AMOUNT IS NEGATIVE!!!");
+            var a=4/0;
+        }
+
         var found = false;
         for (var i = 0; i < this._food.length; i++) {
             if (this._food[i].pos.isEqual(pos)) {
@@ -186,14 +207,50 @@ export class Field {
     public addCreature(c?: Creature,) {
         var cr: Creature;
         if (c) {
-            c.field = this;
             cr = c;
         } else {
             cr = new Creature();
             cr.pos = this.getRandomFreeCell();
         };
         if (this.isFree(cr.pos)) {
+            cr.field = this;
             this._creatures.push(cr);
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // update an existing creature
+    public updateCreature(c: Creature) {
+        for (var i=0; i<this._creatures.length; i++) {
+            if (this._creatures[i].pos.isEqual(c.pos)) {
+                this._creatures[i] = c;
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // ticke: advance one clock cycle
+    public tick() {
+        console.log("Tick");
+        // tick every creature
+        this._creatures.forEach(creature => creature.tick());
+
+        var bodycount=0;
+        // decompose dead bodies
+        this._creatures = this._creatures.filter(creature => {
+            var keep = true;
+            if (creature.dead) {
+                bodycount++;
+                keep = false;
+                this.addFood(creature.pos, Math.max(Math.floor(creature.energy/2),0))
+            }
+            return keep;
+        });
+
+        if (bodycount>0) {
+            for(var i=0; i<bodycount;i++) {
+                this.addCreature();
+            }
         }
     }
 
