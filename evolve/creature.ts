@@ -1,49 +1,37 @@
 import { Coord } from "./coord.js";
 import { Field } from "./field.js";
+import {toolbox} from "./toolbox.js";
+
+interface Stat {
+    Attack: number,
+    Defense: number,
+    Poison: number,
+    Harvest: number,
+    Movement: number,
+    Reproduction: number,
+    Production: number,
+    Digestion: number,
+    Consumption: number
+};
 
 export class Creature {
 
-    private _stats = {
-        Attack: 5,
-        Defense: 5,
-        Poison: 5,
-        Harvest: 5,
-        Movement: 5,
-        Reproduction: 5,
-        Production: 5,
-        Digestion: 5,
-        Consumption: 5
+    // stat points are constant to (num of stat values) *5. If one stat is raised, one other is lowered.
+    // the higher, the better for all stats
+    private _stats: Stat = {
+        Attack: 5,          // (A) Maximum amount of damage an attack command can cause
+        Defense: 5,         // (P) Maximum amount of defense. Damage = attack value - defense value
+        Poison: 5,          // (P) If a creature is poisonous, an attacker receives damage like a counter-attack
+        Harvest: 5,         // (A) amount of energy, a harvest command creates
+        Movement: 5,        // (A) Amount of energy a movement step costs (10-Movement)
+        Reproduction: 5,    // (P) (10-value) *5 = Creature becomes adult and can reproduce if enough energy
+        Production: 5,      // (A) it takes 10-value energy to produce a food item in a random adjacent cell
+        Digestion: 5,       // (P) one food gives 5+(2 * Digestion)
+        Consumption: 5      // (P) amount of Energy every tick costs (10-value) /4
     };
 
-    private _xmax: number;
-    private _ymax: number;
     private _pos: Coord;
     private _field: Field;
-
-    public get field(): Field {
-        return this._field;
-    }
-    public set field(value: Field) {
-        this._field = value;
-    }
-
-    public get pos(): Coord {
-        return this._pos;
-    }
-    public set pos(value: Coord) {
-        this._pos = value;
-    }
-
-    public get xmax(): number {
-        return this._xmax;
-    }
-    public get ymax(): number {
-        return this._ymax;
-    }
-    public get stats() {
-        return this._stats;
-    }
-
     // 1 Food Item = 20 if digestion = 10. with digestion=5 its 10.
     // 1 Move cost 10-Movement energy points
     private _lifespan: number = 100;     // lifespan cycles
@@ -53,6 +41,45 @@ export class Creature {
     private _energy: number = 100;        // Amount of energy
     private _progbuff: Array<number> = new Array(this._progmem);
     private _color: string = "#ffffff";
+    private _hidden = false;
+    private _dead= false;           
+
+    public get lifespan(): number {return this._lifespan;}
+    public set lifespan(value: number) {this._lifespan = value;}
+    
+    public get age(): number {return this._age;}
+    public set age(value: number) {this._age = value;}
+    
+    public get progmem(): number {return this._progmem;}
+    public set progmem(value: number) {this._progmem = value; }
+    
+    public get pc(): number { return this._pc;}
+    public set pc(value: number) {this._pc = value;}
+    
+    public get energy(): number {return this._energy; }
+    public set energy(value: number) {this._energy = value;}
+    
+    public get progbuff(): Array<number> {return this._progbuff;}
+    public set progbuff(value: Array<number>) {this._progbuff = value;}
+
+    public get color(): string {return this._color;}
+    public set color(value: string) {this._color = value;}
+
+    public get field(): Field { return this._field; }
+    public set field(value: Field) { this._field = value; }
+
+    public get pos(): Coord { return this._pos; }
+    public set pos(value: Coord) { this._pos = value; }
+
+    public get stats():Stat { return this._stats; }
+    public set stats(value: Stat) { this._stats = value; }
+
+    public get hidden() { return this._hidden; }
+    public set hidden(value) { this._hidden = value; }
+
+    public get dead() { return this._dead; }
+    public set dead(value) { this._dead = value; }
+
 
     private instructions: Array<string> = [
         "wait",
@@ -67,12 +94,10 @@ export class Creature {
     ];
 
     // --------------------------------------------------------------
-
-    constructor(f: Field, parent?: Creature, mutate?: boolean) {
-        this._xmax = f.g.xres;
-        this._ymax = f.g.yres;
-        this._field = f;
-
+    // Creates a Creature on Pos 0,0
+    // If a Creature is given, the result will be a random mutation
+    // otherwise a completely random Creature
+    constructor(parent?: Creature, mutate?: boolean) {
         if (typeof parent !== 'undefined') {
 
             this._progbuff = [...parent._progbuff];
@@ -101,9 +126,6 @@ export class Creature {
 
     // --------------------------------------------------------------
     private randomize() {
-
-        this._pos.x = this.getRnd(this._xmax);
-        this._pos.y = this.getRnd(this._ymax);
         this._progmem = this.getRnd(10);
         this._progbuff = new Array(this._progmem);
 
@@ -125,7 +147,7 @@ export class Creature {
 
     // --------------------------------------------------------------
     // Change stats. sub 1 from one stat and add it to another
-    private alterStats() {
+    public alterStats() {
         var keys = Object.keys(this._stats)
         var num = keys.length;
         var a = 0, b = 0;
@@ -143,7 +165,7 @@ export class Creature {
         this._stats[keys[a]] = va;
         this._stats[keys[b]] = vb;
     }
-
+    
     // --------------------------------------------------------------
     private getRnd(max: number): number {
         return Math.floor(Math.random() * max);
@@ -179,6 +201,7 @@ export class Creature {
         }
 
     }
+    // --------------------------------------------------------------
 
     public print() {
         this.printStats();
@@ -241,6 +264,14 @@ export class Creature {
         console.log("-------------------------");
     }
 
+    private hasField() {
+        if (!this._field) {
+            console.log("set field first");
+            return false;
+        }
+        return true;
+    }
+
     // --------------------------------------------------------------
     public printProgMem() {
         console.log("Progmem.....:" + this._progmem);
@@ -248,13 +279,21 @@ export class Creature {
             console.log(this.instructions[this._progbuff[i]]);
         }
     }
-
+    // --------------------------------------------------------------
     public draw() {
+        if (!this.hasField) return;
         this._field.g.color(this._color);
-        this._field.g.plot(this._pos);
+        if (this._hidden) {
+            this._field.g.box(this._pos);
+        }else {
+            this._field.g.plot(this._pos);
+        }
     }
 
-    private moveToRandomFreeCell() {
+    // --------------------------------------------------------------
+
+    public moveToRandomFreeCell() {
+        if (!this.hasField) return;
         var freecells = this.field.getNearbyFreeCells(this._pos);
         if (freecells.length > 0) {
             var idx = this.getRnd(freecells.length);
@@ -263,20 +302,28 @@ export class Creature {
         }
     }
 
-    private fleeFromCreature() {
+    // --------------------------------------------------------------
+
+    public fleeFromCreature() {
+        if (!this.hasField) return;
         // only flee if creature is nearby
         var nearbycreatures = this._field.getNearbyCreatures(this._pos);
+        // flee only when a creature is nearby
         if (nearbycreatures.length > 0) {
             // Get list of free cells
             var freecells = this._field.getNearbyFreeCells(this._pos);
             var oldlength = nearbycreatures.length;
             var dest = null;
             // find field with less creatures in reach
+            this._hidden=true;
             freecells.forEach(coord => {
-                if (this._field.getNearbyCreatures(coord).length < oldlength) {
+                var nc = this._field.getNearbyCreatures(coord);
+                if (nc.length < oldlength) {
+                    oldlength=nc.length;
                     dest = coord;
                 }
             });
+            this._hidden= false;
             // if we found one with less creatures, go there, otherwise stay and pray for mercy
             if (dest != null) {
                 this._pos = dest;
@@ -284,12 +331,38 @@ export class Creature {
             }
         }
     }
+    // --------------------------------------------------------------
+    public die() {
+        this._color="#000000";
+        this._dead=true;
+    }
+    // --------------------------------------------------------------
+
+    public moveTowards(c:Coord) {
+        if (this.pos.isEqual(c) || this.pos.isNextTo(c)) return;
+
+        this._energy -= (10 - this._stats.Movement);
+        var dx= Math.abs(this.pos.x-c.x)
+        var dy= Math.abs(this.pos.y-c.y)
+        if(dy>dx) {
+            this.pos.y++;
+        }
+        else {
+            this.pos.x++;
+        }
+    }
+
+    public attack(cr:Creature) {
+
+    }
 
     // --------------------------------------------------------------
     tick() {
+        if(!this.hasField) return;
         var instr = this._progbuff[this._pc];
         this._pc++;
         if (this._pc == this._progmem) this._pc = 0;
+        this._energy -= (10-this._stats.Consumption)/4;
 
         switch (instr) {
             case 0:
@@ -314,24 +387,29 @@ export class Creature {
                 this.moveToRandomFreeCell();
                 break;
             case 5:  // move food
-                // TODO
                 // move towards nearest food item.
                 // if already next to a food item - dont move.
+                this.moveTowards(this._field.getNearestFoodCoord(this._pos));
                 break;
             case 6: // hunt
-                // TODO
                 // move towards nearest creature
                 // if already next to a creature - dont move.
+                this.moveTowards(this._field.getNearestCreatureCoord(this._pos));
                 break;
             case 7: // attack
                 // TODO
-                // attack all creatures in adjacent cells
+                // attack one of the creatures in adjacent cells
+                var creatures = this._field.getNearbyCreatures(this._pos);
+                if (creatures.length > 0) {
+                    var idx = toolbox.getRandomInt(0,(creatures.length-1));
+                    this.attack(creatures[idx]);
+
+                }
                 break;
             case 8: // eat
                 // TODO
                 // eat food of one adjacent cell if available.
                 break;
         }
-
     }
 }

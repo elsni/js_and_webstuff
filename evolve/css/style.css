@@ -1,3 +1,7 @@
 #mainCanvas {
     border: 1px solid red;
 }
+
+#testout {
+    font-family:monospace;
+}

@@ -17,6 +17,7 @@ export class Graphics {
         this._height = canvas.height;
         this.canvasId = canvasId;
         this._ctx = canvas.getContext("2d");
+        this._ctx.imageSmoothingEnabled = false;
         this._xres = xres;
         this._yres = yres;
         this._xfact = this._width / xres;
@@ -36,7 +37,7 @@ export class Graphics {
         this._ctx.fillRect(p.x * this._xfact, p.y * this._yfact, this._xfact - 1, this._yfact - 1);
     }
     public box(p:Coord) {
-        this._ctx.strokeRect(p.x * this._xfact, p.y * this._yfact, this._xfact - 1, this._yfact - 1);
+        this._ctx.strokeRect(p.x * this._xfact+0.5, p.y * this._yfact+0.5, this._xfact - 0.5, this._yfact - 0.5);
     }
 
     public color(col: string) {

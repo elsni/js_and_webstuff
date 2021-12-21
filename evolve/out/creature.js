@@ -1,7 +1,12 @@
 import { Coord } from "./coord.js";
+import { toolbox } from "./toolbox.js";
+;
 export class Creature {
     // --------------------------------------------------------------
-    constructor(f, parent, mutate) {
+    // Creates a Creature on Pos 0,0
+    // If a Creature is given, the result will be a random mutation
+    // otherwise a completely random Creature
+    constructor(parent, mutate) {
         this._stats = {
             Attack: 5,
             Defense: 5,
@@ -22,6 +27,7 @@ export class Creature {
         this._energy = 100; // Amount of energy
         this._progbuff = new Array(this._progmem);
         this._color = "#ffffff";
+        this._hidden = false;
         this.instructions = [
             "wait",
             "harvest",
@@ -33,9 +39,6 @@ export class Creature {
             "attack",
             "eat"
         ];
-        this._xmax = f.g.xres;
-        this._ymax = f.g.yres;
-        this._field = f;
         if (typeof parent !== 'undefined') {
             this._progbuff = [...parent._progbuff];
             this._stats.Attack = parent._stats.Attack;
@@ -60,31 +63,30 @@ export class Creature {
         }
         ;
     }
-    get field() {
-        return this._field;
-    }
-    set field(value) {
-        this._field = value;
-    }
-    get pos() {
-        return this._pos;
-    }
-    set pos(value) {
-        this._pos = value;
-    }
-    get xmax() {
-        return this._xmax;
-    }
-    get ymax() {
-        return this._ymax;
-    }
-    get stats() {
-        return this._stats;
-    }
+    get lifespan() { return this._lifespan; }
+    set lifespan(value) { this._lifespan = value; }
+    get age() { return this._age; }
+    set age(value) { this._age = value; }
+    get progmem() { return this._progmem; }
+    set progmem(value) { this._progmem = value; }
+    get pc() { return this._pc; }
+    set pc(value) { this._pc = value; }
+    get energy() { return this._energy; }
+    set energy(value) { this._energy = value; }
+    get progbuff() { return this._progbuff; }
+    set progbuff(value) { this._progbuff = value; }
+    get color() { return this._color; }
+    set color(value) { this._color = value; }
+    get field() { return this._field; }
+    set field(value) { this._field = value; }
+    get pos() { return this._pos; }
+    set pos(value) { this._pos = value; }
+    get stats() { return this._stats; }
+    set stats(value) { this._stats = value; }
+    get hidden() { return this._hidden; }
+    set hidden(value) { this._hidden = value; }
     // --------------------------------------------------------------
     randomize() {
-        this._pos.x = this.getRnd(this._xmax);
-        this._pos.y = this.getRnd(this._ymax);
         this._progmem = this.getRnd(10);
         this._progbuff = new Array(this._progmem);
         // randomize programm
@@ -148,6 +150,7 @@ export class Creature {
             this._progbuff[instidx] = this.getRnd(this.instructions.length);
         }
     }
+    // --------------------------------------------------------------
     print() {
         this.printStats();
         this.printProgMem();
@@ -206,6 +209,13 @@ export class Creature {
         console.log("Consumption.:" + this._stats.Consumption);
         console.log("-------------------------");
     }
+    hasField() {
+        if (!this._field) {
+            console.log("set field first");
+            return false;
+        }
+        return true;
+    }
     // --------------------------------------------------------------
     printProgMem() {
         console.log("Progmem.....:" + this._progmem);
@@ -213,11 +223,22 @@ export class Creature {
             console.log(this.instructions[this._progbuff[i]]);
         }
     }
+    // --------------------------------------------------------------
     draw() {
+        if (!this.hasField)
+            return;
         this._field.g.color(this._color);
-        this._field.g.plot(this._pos);
+        if (this._hidden) {
+            this._field.g.box(this._pos);
+        }
+        else {
+            this._field.g.plot(this._pos);
+        }
     }
+    // --------------------------------------------------------------
     moveToRandomFreeCell() {
+        if (!this.hasField)
+            return;
         var freecells = this.field.getNearbyFreeCells(this._pos);
         if (freecells.length > 0) {
             var idx = this.getRnd(freecells.length);
@@ -225,20 +246,28 @@ export class Creature {
             this._energy -= (10 - this._stats.Movement);
         }
     }
+    // --------------------------------------------------------------
     fleeFromCreature() {
+        if (!this.hasField)
+            return;
         // only flee if creature is nearby
         var nearbycreatures = this._field.getNearbyCreatures(this._pos);
+        // flee only when a creature is nearby
         if (nearbycreatures.length > 0) {
             // Get list of free cells
             var freecells = this._field.getNearbyFreeCells(this._pos);
             var oldlength = nearbycreatures.length;
             var dest = null;
             // find field with less creatures in reach
+            this._hidden = true;
             freecells.forEach(coord => {
-                if (this._field.getNearbyCreatures(coord).length < oldlength) {
+                var nc = this._field.getNearbyCreatures(coord);
+                if (nc.length < oldlength) {
+                    oldlength = nc.length;
                     dest = coord;
                 }
             });
+            this._hidden = false;
             // if we found one with less creatures, go there, otherwise stay and pray for mercy
             if (dest != null) {
                 this._pos = dest;
@@ -246,8 +275,25 @@ export class Creature {
             }
         }
     }
+    moveTowards(c) {
+        if (this.pos.isEqual(c) || this.pos.isNextTo(c))
+            return;
+        this._energy -= (10 - this._stats.Movement);
+        var dx = Math.abs(this.pos.x - c.x);
+        var dy = Math.abs(this.pos.y - c.y);
+        if (dy > dx) {
+            this.pos.y++;
+        }
+        else {
+            this.pos.x++;
+        }
+    }
+    attack(cr) {
+    }
     // --------------------------------------------------------------
     tick() {
+        if (!this.hasField)
+            return;
         var instr = this._progbuff[this._pc];
         this._pc++;
         if (this._pc == this._progmem)
@@ -275,18 +321,23 @@ export class Creature {
                 this.moveToRandomFreeCell();
                 break;
             case 5: // move food
-                // TODO
                 // move towards nearest food item.
                 // if already next to a food item - dont move.
+                this.moveTowards(this._field.getNearestFoodCoord(this._pos));
                 break;
             case 6: // hunt
-                // TODO
                 // move towards nearest creature
                 // if already next to a creature - dont move.
+                this.moveTowards(this._field.getNearestCreatureCoord(this._pos));
                 break;
             case 7: // attack
                 // TODO
-                // attack all creatures in adjacent cells
+                // attack one of the creatures in adjacent cells
+                var creatures = this._field.getNearbyCreatures(this._pos);
+                if (creatures.length > 0) {
+                    var idx = toolbox.getRandomInt(0, (creatures.length - 1));
+                    this.attack(creatures[idx]);
+                }
                 break;
             case 8: // eat
                 // TODO
