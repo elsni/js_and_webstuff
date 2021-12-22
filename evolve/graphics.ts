@@ -10,9 +10,11 @@ export class Graphics {
     private _ctx: CanvasRenderingContext2D;
     private _xfact: number;
     private _yfact: number;
+    private _mouseEventHandler: Function;
 
     constructor(canvasId: string, xres: number, yres: number) {
         var canvas = <HTMLCanvasElement>document.getElementById(canvasId);
+        canvas.addEventListener("mousedown",  ev => this.mouseDispatcher(ev));
         this._width = canvas.width;
         this._height = canvas.height;
         this.canvasId = canvasId;
@@ -33,15 +35,25 @@ export class Graphics {
         this._ctx.fillRect(0, 0, this._width, this._height);
         this._ctx.fillStyle = oldstyle;
     }
-    public plot(p:Coord) {
+    public plot(p: Coord) {
         this._ctx.fillRect(p.x * this._xfact, p.y * this._yfact, this._xfact - 1, this._yfact - 1);
     }
-    public box(p:Coord) {
-        this._ctx.strokeRect(p.x * this._xfact+0.5, p.y * this._yfact+0.5, this._xfact - 0.5, this._yfact - 0.5);
+    public box(p: Coord) {
+        this._ctx.strokeRect(p.x * this._xfact + 0.5, p.y * this._yfact + 0.5, this._xfact - 0.5, this._yfact - 0.5);
     }
 
     public color(col: string) {
         this._ctx.fillStyle = col;
         this._ctx.strokeStyle = col;
+    }
+
+    public setMouseEventHandler(handler: Function) {
+        this._mouseEventHandler = handler;
+    }
+
+    private mouseDispatcher(event) {
+        if (this._mouseEventHandler) {
+            this._mouseEventHandler(new Coord(Math.floor((event.layerX - 1) / this._xfact), Math.floor((event.layerY - 1) / this._yfact)));
+        }
     }
 }

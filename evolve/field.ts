@@ -47,7 +47,7 @@ export class Field {
     public getRandomFreeCell() {
         var result: Coord
         do {
-            result = Coord.getRandom(this._g.xres-1, this._g.yres-1);
+            result = Coord.getRandom(this._g.xres - 1, this._g.yres - 1);
         } while (!this.isFree(result));
         return result;
     }
@@ -92,11 +92,11 @@ export class Field {
     public getRandomAdjacentFreeCell(cellCoord: Coord): Coord {
         var freeCells = this.getNearbyFreeCells(cellCoord);
         var result: Coord;
-        if (freeCells.length<1) {
+        if (freeCells.length < 1) {
             result = this.getRandomAdjacentCell(cellCoord);
-        } 
+        }
         else {
-            result = freeCells[toolbox.getRandomInt(0,freeCells.length-1)];
+            result = freeCells[toolbox.getRandomInt(0, freeCells.length - 1)];
         }
         return result;
     }
@@ -107,6 +107,19 @@ export class Field {
         return this._creatures.filter(function (element) {
             return (element.pos.isNextTo(cellCoord) && !element.hidden);
         });
+    }
+
+        // ---------------------------------------------------------------------------------------------
+    // return a list of creatures next to a given cell
+    public getCreature(cellCoord: Coord): Creature {
+        var result:Creature;
+        var res= this._creatures.filter(function (element) {
+            return (element.pos.isEqual(cellCoord));
+        });
+        if (res.length>0) {
+            result = res[0];
+        }
+        return result;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -147,6 +160,28 @@ export class Field {
         return result;
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // retun nearest free cell around a coordinate
+    // looks in rings around coordinate for free cell
+    public findNearestFreeCell(cellCoord: Coord): Coord {
+        var ring = 1;
+        var c1, c2, c3, c4: Coord;
+        do {
+            for (var i = -ring+1; i <= ring; i++) {
+                c1 = cellCoord.offset(new Coord(i, -ring));
+                c2 = cellCoord.offset(new Coord(i, +ring));
+                c3 = cellCoord.offset(new Coord(-ring, i));
+                c4 = cellCoord.offset(new Coord(+ring, i));
+                if (this.isFree(c1)) return c1;
+                if (this.isFree(c2)) return c2;
+                if (this.isFree(c3)) return c3;
+                if (this.isFree(c4)) return c4;
+            }
+            ring++;
+            // stop if maximum possible ringsize within field is reached
+        } while (ring<= Math.max(this._g.xres-cellCoord.x,cellCoord.x));
+        return undefined;
+    }
 
     // ---------------------------------------------------------------------------------------------
     // look for the food item with highest value in adjacent cells, remove it and return its value
@@ -184,9 +219,9 @@ export class Field {
     // ---------------------------------------------------------------------------------------------
     // add food to a given cell
     public addFood(pos: Coord, amount: number) {
-        if (amount<0) {
+        if (amount < 0) {
             console.log("AMOUNT IS NEGATIVE!!!");
-            var a=4/0;
+            var a = 4 / 0;
         }
 
         var found = false;
@@ -221,7 +256,7 @@ export class Field {
     // ---------------------------------------------------------------------------------------------
     // update an existing creature
     public updateCreature(c: Creature) {
-        for (var i=0; i<this._creatures.length; i++) {
+        for (var i = 0; i < this._creatures.length; i++) {
             if (this._creatures[i].pos.isEqual(c.pos)) {
                 this._creatures[i] = c;
             }
@@ -235,20 +270,20 @@ export class Field {
         // tick every creature
         this._creatures.forEach(creature => creature.tick());
 
-        var bodycount=0;
+        var bodycount = 0;
         // decompose dead bodies
         this._creatures = this._creatures.filter(creature => {
             var keep = true;
             if (creature.dead) {
                 bodycount++;
                 keep = false;
-                this.addFood(creature.pos, Math.max(Math.floor(creature.energy/2),0))
+                this.addFood(creature.pos, Math.max(Math.floor(creature.energy / 2), 0))
             }
             return keep;
         });
 
-        if (bodycount>0) {
-            for(var i=0; i<bodycount;i++) {
+        if (bodycount > 0) {
+            for (var i = 0; i < bodycount; i++) {
                 this.addCreature();
             }
         }

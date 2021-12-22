@@ -57,7 +57,9 @@ export class Creature {
             this._stats.Consumption = parent._stats.Consumption;
             this._age = 0;
             this._lifespan = parent._lifespan;
-            this._energy = Math.floor(parent._energy / 2);
+            this._energy = parent._energy;
+            this._progmem = parent.progmem;
+            this._color = parent.color;
             if (mutate) {
                 this.mutate();
             }
@@ -128,7 +130,7 @@ export class Creature {
     }
     // --------------------------------------------------------------
     reproduce() {
-        var childpos = this._field.getRandomAdjacentFreeCell(this._pos);
+        var childpos = this._field.findNearestFreeCell(this._pos);
         // chreate mutated child
         var child = new Creature(this, true);
         // share energy
@@ -163,6 +165,9 @@ export class Creature {
         if (toolbox.getRandomInt(1, 10) == 1) {
             var oldpgm = this._progmem;
             this._progmem += toolbox.getRandomInt(-1, 1);
+            if (this._progmem < 1) {
+                this._progmem = 1;
+            }
             // if progmem gets bigger, push one random instruction to widen the array
             if (this._progmem > oldpgm) {
                 this._progbuff.push(toolbox.getRandomInt(0, this.instructions.length - 1));
@@ -219,6 +224,7 @@ export class Creature {
     }
     // --------------------------------------------------------------
     printStats() {
+        console.log("-------------------------");
         console.log("Pos (x,y)...:" + this._pos.toString());
         console.log("Color.......:" + this._color);
         console.log("Energy......:" + this._energy);
@@ -245,9 +251,10 @@ export class Creature {
     }
     // --------------------------------------------------------------
     printProgMem() {
+        console.log("PC..........:" + this._pc);
         console.log("Progmem.....:" + this._progmem);
         for (var i = 0; i < this._progmem; i++) {
-            console.log(this.instructions[this._progbuff[i]]);
+            console.log(toolbox.zeroPad(i, 2) + ": " + this.instructions[this._progbuff[i]]);
         }
     }
     // --------------------------------------------------------------
@@ -310,7 +317,6 @@ export class Creature {
     // --------------------------------------------------------------
     moveTowards(c) {
         if (c) {
-            console.log("move towards " + c);
             if (this.pos.isEqual(c) || this.pos.isNextTo(c))
                 return;
             var dx = Math.abs(this.pos.x - c.x);
@@ -337,7 +343,10 @@ export class Creature {
         if (!this.hasField)
             return;
         var instr = this._progbuff[this._pc];
-        console.log("Instruction: (" + instr + ")" + this.instructions[instr]);
+        if (instr === undefined) {
+            console.log("ERROR Instruction: (" + instr + ")" + this.instructions[instr]);
+            this.printProgMem();
+        }
         switch (instr) {
             case 0:
                 //wait -  do nothing

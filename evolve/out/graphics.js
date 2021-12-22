@@ -1,6 +1,8 @@
+import { Coord } from "./coord.js";
 export class Graphics {
     constructor(canvasId, xres, yres) {
         var canvas = document.getElementById(canvasId);
+        canvas.addEventListener("mousedown", ev => this.mouseDispatcher(ev));
         this._width = canvas.width;
         this._height = canvas.height;
         this.canvasId = canvasId;
@@ -28,5 +30,13 @@ export class Graphics {
     color(col) {
         this._ctx.fillStyle = col;
         this._ctx.strokeStyle = col;
+    }
+    setMouseEventHandler(handler) {
+        this._mouseEventHandler = handler;
+    }
+    mouseDispatcher(event) {
+        if (this._mouseEventHandler) {
+            this._mouseEventHandler(new Coord(Math.floor((event.layerX - 1) / this._xfact), Math.floor((event.layerY - 1) / this._yfact)));
+        }
     }
 }

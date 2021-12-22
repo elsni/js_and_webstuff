@@ -1,6 +1,6 @@
 import { Coord } from "./coord.js";
 import { Field } from "./field.js";
-import {toolbox} from "./toolbox.js";
+import { toolbox } from "./toolbox.js";
 
 interface Stat {
     Attack: number,
@@ -44,28 +44,28 @@ export class Creature {
     private _progbuff: Array<number> = new Array(this._progmem);
     private _color: string = "#ffffff";
     private _hidden = false;
-    private _dead= false;           
+    private _dead = false;
 
-    public get lifespan(): number {return this._lifespan;}
-    public set lifespan(value: number) {this._lifespan = value;}
-    
-    public get age(): number {return this._age;}
-    public set age(value: number) {this._age = value;}
-    
-    public get progmem(): number {return this._progmem;}
-    public set progmem(value: number) {this._progmem = value; }
-    
-    public get pc(): number { return this._pc;}
-    public set pc(value: number) {this._pc = value;}
-    
-    public get energy(): number {return this._energy; }
-    public set energy(value: number) {this._energy = value;}
-    
-    public get progbuff(): Array<number> {return this._progbuff;}
-    public set progbuff(value: Array<number>) {this._progbuff = value;}
+    public get lifespan(): number { return this._lifespan; }
+    public set lifespan(value: number) { this._lifespan = value; }
 
-    public get color(): string {return this._color;}
-    public set color(value: string) {this._color = value;}
+    public get age(): number { return this._age; }
+    public set age(value: number) { this._age = value; }
+
+    public get progmem(): number { return this._progmem; }
+    public set progmem(value: number) { this._progmem = value; }
+
+    public get pc(): number { return this._pc; }
+    public set pc(value: number) { this._pc = value; }
+
+    public get energy(): number { return this._energy; }
+    public set energy(value: number) { this._energy = value; }
+
+    public get progbuff(): Array<number> { return this._progbuff; }
+    public set progbuff(value: Array<number>) { this._progbuff = value; }
+
+    public get color(): string { return this._color; }
+    public set color(value: string) { this._color = value; }
 
     public get field(): Field { return this._field; }
     public set field(value: Field) { this._field = value; }
@@ -73,7 +73,7 @@ export class Creature {
     public get pos(): Coord { return this._pos; }
     public set pos(value: Coord) { this._pos = value; }
 
-    public get stats():Stat { return this._stats; }
+    public get stats(): Stat { return this._stats; }
     public set stats(value: Stat) { this._stats = value; }
 
     public get hidden() { return this._hidden; }
@@ -114,26 +114,28 @@ export class Creature {
             this._stats.Consumption = parent._stats.Consumption;
             this._age = 0;
             this._lifespan = parent._lifespan;
-            this._energy = Math.floor(parent._energy / 2);
+            this._energy = parent._energy;
+            this._progmem = parent.progmem;
+            this._color = parent.color;
 
             if (mutate) {
                 this.mutate();
             }
 
         } else {
-            this._pos = new Coord(0,0);
+            this._pos = new Coord(0, 0);
             this.randomize();
         };
     }
 
     // --------------------------------------------------------------
     private randomize() {
-        this._progmem = toolbox.getRandomInt(1,10);
+        this._progmem = toolbox.getRandomInt(1, 10);
         this._progbuff = new Array(this._progmem);
 
         // randomize programm
         for (var i: number = 0; i < this._progmem; i++) {
-            this._progbuff[i] = toolbox.getRandomInt(0,this.instructions.length-1);
+            this._progbuff[i] = toolbox.getRandomInt(0, this.instructions.length - 1);
         }
 
         // shuffle Stats
@@ -142,7 +144,7 @@ export class Creature {
         }
 
         // randomize lifespan
-        this._lifespan = toolbox.getRandomInt(20,300);
+        this._lifespan = toolbox.getRandomInt(20, 300);
 
         this.calculateColor();
     }
@@ -156,8 +158,8 @@ export class Creature {
         var va = 0, vb = 0;
         do {
             do {
-                a = toolbox.getRandomInt(0,num-1);
-                b = toolbox.getRandomInt(0,num-1);
+                a = toolbox.getRandomInt(0, num - 1);
+                b = toolbox.getRandomInt(0, num - 1);
             } while (a === b);
             va = this._stats[keys[a]] + 1;
             vb = this._stats[keys[b]] - 1;
@@ -170,14 +172,14 @@ export class Creature {
 
     // --------------------------------------------------------------
     private reproduce() {
-        var childpos = this._field.getRandomAdjacentFreeCell(this._pos);
+        var childpos = this._field.findNearestFreeCell(this._pos);
 
         // chreate mutated child
-        var child = new Creature(this,true);
+        var child = new Creature(this, true);
 
         // share energy
-        child.energy = Math.floor(this._energy/2);
-        this._energy-=child.energy;
+        child.energy = Math.floor(this._energy / 2);
+        this._energy -= child.energy;
 
         child.field = this._field;
         child.pos = childpos;
@@ -192,37 +194,41 @@ export class Creature {
         this.alterStats();
 
         // sometimes alter lifespan
-        if (toolbox.getRandomInt(1,3) == 1) {
-            this._lifespan += toolbox.getRandomInt(-5,5);
+        if (toolbox.getRandomInt(1, 3) == 1) {
+            this._lifespan += toolbox.getRandomInt(-5, 5);
             if (this._lifespan < 20) this._lifespan = 20;
             if (this._lifespan > 300) this._lifespan = 300;
         }
 
         // sometimes alter lifespan
-        if (toolbox.getRandomInt(1,3) == 1) {
-            this._reproEnergy += toolbox.getRandomInt(-2,2);
+        if (toolbox.getRandomInt(1, 3) == 1) {
+            this._reproEnergy += toolbox.getRandomInt(-2, 2);
             if (this._reproEnergy < 10) this._reproEnergy = 10;
             if (this._reproEnergy > 80) this._reproEnergy = 80;
         }
         // rarely change program size
-        if (toolbox.getRandomInt(1,10) == 1) {
+        if (toolbox.getRandomInt(1, 10) == 1) {
             var oldpgm = this._progmem;
-            this._progmem += toolbox.getRandomInt(-1,1);
+            this._progmem += toolbox.getRandomInt(-1, 1);
+            if (this._progmem<1) {
+                this._progmem=1;
+            }
 
             // if progmem gets bigger, push one random instruction to widen the array
             if (this._progmem > oldpgm) {
-                this._progbuff.push(toolbox.getRandomInt(0,this.instructions.length-1));
+                this._progbuff.push(toolbox.getRandomInt(0, this.instructions.length - 1));
             }
-            if(this._pc>=this._progmem) this._pc=0;
+            if (this._pc >= this._progmem) this._pc = 0;
         }
 
         // sometimes change one program instruction to a random one
-        if (toolbox.getRandomInt(1,5) == 1) {
-            var instidx = toolbox.getRandomInt(0,this._progmem-1);
-            this._progbuff[instidx] = toolbox.getRandomInt(0,this.instructions.length-1);
+        if (toolbox.getRandomInt(1, 5) == 1) {
+            var instidx = toolbox.getRandomInt(0, this._progmem - 1);
+            this._progbuff[instidx] = toolbox.getRandomInt(0, this.instructions.length - 1);
         }
 
         this.calculateColor();
+
 
     }
     // --------------------------------------------------------------
@@ -270,6 +276,7 @@ export class Creature {
     }
     // --------------------------------------------------------------
     public printStats() {
+        console.log("-------------------------");
         console.log("Pos (x,y)...:" + this._pos.toString());
         console.log("Color.......:" + this._color);
         console.log("Energy......:" + this._energy);
@@ -298,9 +305,10 @@ export class Creature {
 
     // --------------------------------------------------------------
     public printProgMem() {
+        console.log("PC..........:" + this._pc);
         console.log("Progmem.....:" + this._progmem);
         for (var i: number = 0; i < this._progmem; i++) {
-            console.log(this.instructions[this._progbuff[i]]);
+            console.log(toolbox.zeroPad(i, 2) +": "+ this.instructions[this._progbuff[i]]);
         }
     }
     // --------------------------------------------------------------
@@ -309,7 +317,7 @@ export class Creature {
         this._field.g.color(this._color);
         if (this._hidden) {
             this._field.g.box(this._pos);
-        }else {
+        } else {
             this._field.g.plot(this._pos);
         }
     }
@@ -320,7 +328,7 @@ export class Creature {
         if (!this.hasField) return;
         var freecells = this.field.getNearbyFreeCells(this._pos);
         if (freecells.length > 0) {
-            var idx = toolbox.getRandomInt(0,freecells.length-1);
+            var idx = toolbox.getRandomInt(0, freecells.length - 1);
             this._pos = freecells[idx];
             this._energy -= (10 - this._stats.Movement);
         }
@@ -339,15 +347,15 @@ export class Creature {
             var oldlength = nearbycreatures.length;
             var dest = null;
             // find field with less creatures in reach
-            this._hidden=true;
+            this._hidden = true;
             freecells.forEach(coord => {
                 var nc = this._field.getNearbyCreatures(coord);
                 if (nc.length < oldlength) {
-                    oldlength=nc.length;
+                    oldlength = nc.length;
                     dest = coord;
                 }
             });
-            this._hidden= false;
+            this._hidden = false;
             // if we found one with less creatures, go there, otherwise stay and pray for mercy
             if (dest != null) {
                 this._pos = dest;
@@ -357,30 +365,29 @@ export class Creature {
     }
     // --------------------------------------------------------------
     public die() {
-        this._color="#000000";
-        this._dead=true;
+        this._color = "#000000";
+        this._dead = true;
     }
     // --------------------------------------------------------------
 
-    public moveTowards(c:Coord) {
+    public moveTowards(c: Coord) {
         if (c) {
-        console.log("move towards "+c);
-        if (this.pos.isEqual(c) || this.pos.isNextTo(c)) return;
-        var dx= Math.abs(this.pos.x-c.x)
-        var dy= Math.abs(this.pos.y-c.y)
-        if(dy>dx) {
-            this.pos.y++;
+            if (this.pos.isEqual(c) || this.pos.isNextTo(c)) return;
+            var dx = Math.abs(this.pos.x - c.x)
+            var dy = Math.abs(this.pos.y - c.y)
+            if (dy > dx) {
+                this.pos.y++;
+            }
+            else {
+                this.pos.x++;
+            }
         }
-        else {
-            this.pos.x++;
-        }
-    }
     }
 
     // --------------------------------------------------------------
-    public attack(cr:Creature) {
-        var damage = Math.max(this._stats.Attack - cr.stats.Defense,0);
-        var damage_received = Math.max(cr.stats.Poison - this._stats.Defense,0);
+    public attack(cr: Creature) {
+        var damage = Math.max(this._stats.Attack - cr.stats.Defense, 0);
+        var damage_received = Math.max(cr.stats.Poison - this._stats.Defense, 0);
         cr.energy -= damage;
         this._energy -= damage_received;
         //this._field.updateCreature(this);
@@ -389,9 +396,13 @@ export class Creature {
 
     // --------------------------------------------------------------
     tick() {
-        if(!this.hasField) return;
+        if (!this.hasField) return;
         var instr = this._progbuff[this._pc];
-        console.log("Instruction: ("+instr+")"+this.instructions[instr]);
+        
+        if (instr===undefined) {
+            console.log("ERROR Instruction: ("+instr+")"+this.instructions[instr]);
+            this.printProgMem();
+        }
         switch (instr) {
             case 0:
                 //wait -  do nothing
@@ -410,8 +421,8 @@ export class Creature {
                 // TODO
                 if (this._energy >= this._productionEnergy) {
                     var foodpos = this._field.getRandomAdjacentCell(this._pos);
-                    this._field.addFood(foodpos,1);
-                    this._energy -= (10-this._stats.Production);
+                    this._field.addFood(foodpos, 1);
+                    this._energy -= (10 - this._stats.Production);
                 }
                 // produce food item in nearby field if energy level is sufficient
                 break;
@@ -439,13 +450,13 @@ export class Creature {
                 // attack one of the creatures in adjacent cells
                 var creatures = this._field.getNearbyCreatures(this._pos);
                 if (creatures.length > 0) {
-                    var idx = toolbox.getRandomInt(0,(creatures.length-1));
+                    var idx = toolbox.getRandomInt(0, (creatures.length - 1));
                     this.attack(creatures[idx]);
                 }
                 break;
             case 8: // eat
                 var foodval = this._field.consumeBestFoodAround(this._pos);
-                this._energy += foodval *(5+2*this._stats.Digestion);
+                this._energy += foodval * (5 + 2 * this._stats.Digestion);
                 // eat food of one adjacent cell if available.
                 break;
         }
@@ -454,14 +465,14 @@ export class Creature {
         this._pc++;
         if (this._pc >= this._progmem) this._pc = 0;
         // subtract base energy consumption
-        this._energy -= (10-this._stats.Consumption)/4;
-        if (this._age>=(10-this._stats.Reproduction)*5 && this._energy >= this._reproEnergy) {
+        this._energy -= (10 - this._stats.Consumption) / 4;
+        if (this._age >= (10 - this._stats.Reproduction) * 5 && this._energy >= this._reproEnergy) {
             this.reproduce();
         }
 
         this._age++;
         // die of age or of low energy.
-        if (this._age > this._lifespan || this._energy<=0 ) this.die();
+        if (this._age > this._lifespan || this._energy <= 0) this.die();
 
     }
 }

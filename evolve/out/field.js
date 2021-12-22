@@ -91,6 +91,18 @@ export class Field {
         });
     }
     // ---------------------------------------------------------------------------------------------
+    // return a list of creatures next to a given cell
+    getCreature(cellCoord) {
+        var result;
+        var res = this._creatures.filter(function (element) {
+            return (element.pos.isEqual(cellCoord));
+        });
+        if (res.length > 0) {
+            result = res[0];
+        }
+        return result;
+    }
+    // ---------------------------------------------------------------------------------------------
     // Return the coord of the nearest food item
     getNearestFoodCoord(cellCoord) {
         var result;
@@ -125,6 +137,32 @@ export class Field {
         Coord.aroundOffsets.forEach(crd => { if (this.isFree(cellCoord.offset(crd)))
             result.push(cellCoord.offset(crd)); });
         return result;
+    }
+    // ---------------------------------------------------------------------------------------------
+    // retun nearest free cell around a coordinate
+    // looks in rings around coordinate for free cell
+    findNearestFreeCell(cellCoord) {
+        var ring = 1;
+        var c1, c2, c3, c4;
+        do {
+            for (var i = -ring + 1; i <= ring; i++) {
+                c1 = cellCoord.offset(new Coord(i, -ring));
+                c2 = cellCoord.offset(new Coord(i, +ring));
+                c3 = cellCoord.offset(new Coord(-ring, i));
+                c4 = cellCoord.offset(new Coord(+ring, i));
+                if (this.isFree(c1))
+                    return c1;
+                if (this.isFree(c2))
+                    return c2;
+                if (this.isFree(c3))
+                    return c3;
+                if (this.isFree(c4))
+                    return c4;
+            }
+            ring++;
+            // stop if maximum possible ringsize within field is reached
+        } while (ring <= Math.max(this._g.xres - cellCoord.x, cellCoord.x));
+        return undefined;
     }
     // ---------------------------------------------------------------------------------------------
     // look for the food item with highest value in adjacent cells, remove it and return its value

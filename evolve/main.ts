@@ -1,5 +1,6 @@
 import { Graphics } from "./graphics.js";
 import { Field } from "./field.js";
+import { Coord } from "./coord.js";
 
 
 class Evolve {
@@ -7,7 +8,8 @@ class Evolve {
     private _g: Graphics;
     private _f: Field;
 
-
+    private _run = false;
+    private _intervalId;
     constructor() {
         this.init();
     };
@@ -18,22 +20,43 @@ class Evolve {
         for (var i = 0; i <= 10; i++) {
             this._f.addCreature();
         }
+
+        document.addEventListener('keypress', (event) => {
+            var name = event.key;
+            var code = event.code;
+            console.log(this._run);
+            if (this._run) {
+                clearInterval(this._intervalId);
+                this._run = false;
+            }
+            else {
+                var t = this;
+                this._intervalId = setInterval(function () {
+                    t.loop();
+                }, 500);
+                this._run = true;
+            }
+
+        }, false);
+
+        this._g.setMouseEventHandler(ev => this.click(ev));
+
     };
-    
+
     loop() {
-        console.log("loop");
         this._f.tick();
         this._f.draw();
 
     };
 
+    click(c: Coord) {
+        var cr = this._f.getCreature(c);
+        if (cr) {
+            cr.print();
+        }
+    };
+
     main() {
-        var t=this;
-        console.log("main");
-        setInterval(function() {
-            console.log("interval");
-            t.loop();
-        }, 200);
     };
 
 }

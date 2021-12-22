@@ -6,4 +6,9 @@ export class toolbox {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
+    public static zeroPad(num:number, places:number):string {
+        var zero = places - num.toString().length + 1;
+        return Array(+(zero > 0 && zero)).join("0") + num;
+      }
+
 }

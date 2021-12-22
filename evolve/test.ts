@@ -77,6 +77,20 @@ class Test {
         t.expectCoordNotInArray(fc,c1111,"getNearbyFreeCells 3");
         t.expectCoordNotInArray(fc,c1010,"getNearbyFreeCells 4");
         t.expectCoordNotInArray(fc,c1210,"getNearbyFreeCells 5");
+        f = new Field(this.g);
+        for (var i=2; i<=18;i++) {
+            for (var j=2; j<=18;j++) {
+                var c =new Creature();
+                c.pos= new Coord(i,j);
+                f.addCreature(c);
+            }
+        }
+        var ccr= f.findNearestFreeCell(c1010);
+        var d =new Creature();
+        d.pos= ccr;
+        f.addCreature(d);
+       console.log(ccr);
+        f.draw();
     }
     
     testFieldFood() {
@@ -159,7 +173,7 @@ class Test {
         this.testCoord();
         this.testCreature();
         this.testFieldCreature();
-        this.testFieldFood();
+        //this.testFieldFood();
     };
 }
 
