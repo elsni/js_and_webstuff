@@ -32,4 +32,8 @@ export class Food {
         f.g.color(this._color[cindex]);
         f.g.box(this.pos);
     }
+
+    public print() {
+        console.log("Food: "+this._amount);
+    }
 }

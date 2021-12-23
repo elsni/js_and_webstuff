@@ -31,7 +31,7 @@ class Test {
         var c1210 = new Coord(12, 10);
         var c1113 = new Coord(11, 13);
         var c1515 = new Coord(15, 15);
-        var f = new Field(this.g);
+        var f = new Field(this.g, 1);
         var c1 = new Creature();
         c1.pos = c1010;
         f.addCreature(c1);
@@ -66,7 +66,7 @@ class Test {
         t.expectCoordNotInArray(fc, c1111, "getNearbyFreeCells 3");
         t.expectCoordNotInArray(fc, c1010, "getNearbyFreeCells 4");
         t.expectCoordNotInArray(fc, c1210, "getNearbyFreeCells 5");
-        f = new Field(this.g);
+        f = new Field(this.g, 1);
         for (var i = 2; i <= 18; i++) {
             for (var j = 2; j <= 18; j++) {
                 var c = new Creature();
@@ -82,7 +82,7 @@ class Test {
         f.draw();
     }
     testFieldFood() {
-        var f = new Field(this.g);
+        var f = new Field(this.g, 1);
         var t = new Tester("Field (Food)");
         var c1919 = new Coord(19, 19);
         var c0101 = new Coord(1, 1);
@@ -124,7 +124,7 @@ class Test {
         var c1210 = new Coord(12, 10);
         var c1113 = new Coord(11, 13);
         var t = new Tester("Creature");
-        var f = new Field(this.g);
+        var f = new Field(this.g, 1);
         var c1 = new Creature();
         c1.pos = c1010;
         f.addCreature(c1);

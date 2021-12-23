@@ -9,7 +9,9 @@ export class Field {
     private _creatures: Creature[];
     //private _food: number[][];
     private _food: Food[];
-
+    private _born:number=0;
+    private _freemap:boolean[][];
+    private _minpop: number;
 
     // Offsets for all 8 cells around a coordinate
     private _around = [
@@ -21,24 +23,47 @@ export class Field {
     public get g(): Graphics {
         return this._g;
     }
-
+    public get population(): number {
+        return this._creatures.length;
+    }
+    public get minPopulation(): number {
+        return this._minpop;
+    }
+    public set minPopulation(value: number) {
+        this._minpop = value;
+    }
     // ---------------------------------------------------------------------------------------------
-    constructor(g: Graphics) {
+    constructor(g: Graphics, minimumPopulation:number) {
         this._creatures = [];
         this._food = [];
         this._g = g;
+        this._freemap = new Array(g.xres).fill(false).map(() => new Array(g.yres).fill(false));
+        this._minpop= minimumPopulation;
+    }
+
+    public free(cellCoord:Coord) {
+        this._freemap[cellCoord.x][cellCoord.y] = false;
+    }
+    public occupy(cellCoord:Coord) {
+        this._freemap[cellCoord.x][cellCoord.y] = true;
+    }
+    public move(from:Coord, to:Coord) {
+        this.free(from);
+        this.occupy(to);
     }
 
     // ---------------------------------------------------------------------------------------------
     // Checks if a cell is free (no creature there)
     public isFree(cellCoord: Coord): boolean {
         if (!this.isValidCoord(cellCoord)) return false;
-        return !this._creatures.find(element => (element.pos.isEqual(cellCoord) && !element.hidden));
+        return !this._freemap[cellCoord.x][cellCoord.y];
+        //return !this._creatures.find(element => (element.pos.isEqual(cellCoord) && !element.hidden));
     }
 
     // ---------------------------------------------------------------------------------------------
     // check if a coordinate is within the field boundaries
     public isValidCoord(cellCoord: Coord): boolean {
+        if (!cellCoord) return false;
         return ((cellCoord.x >= 0 && cellCoord.x < this.g.xres) && (cellCoord.y >= 0 && cellCoord.y < this.g.yres))
     }
 
@@ -46,9 +71,21 @@ export class Field {
     // return a random free cell within field boundaries
     public getRandomFreeCell() {
         var result: Coord
+        var count=0;
         do {
             result = Coord.getRandom(this._g.xres - 1, this._g.yres - 1);
-        } while (!this.isFree(result));
+            count++;
+        } while (!this.isFree(result) &&  count<10);
+        if (!result) {
+            for (var x=0;x<this._g.xres; x++) {
+                for (var y=0;x<this._g.yres; y++) {
+                    if (!this._freemap[x][y]) {
+                        return new Coord(x,y);
+                    }
+                }
+
+            }
+        }
         return result;
     }
 
@@ -78,6 +115,7 @@ export class Field {
     // return the coordinates of a random valid cell next to a given cell
     public getRandomAdjacentCell(cellCoord: Coord): Coord {
         var result: Coord;
+        if (!this.isValidCoord(cellCoord)) return result;
         do {
             var idx = toolbox.getRandomInt(0, 7);
             var cellOff = Coord.aroundOffsets[idx];
@@ -221,7 +259,11 @@ export class Field {
     public addFood(pos: Coord, amount: number) {
         if (amount < 0) {
             console.log("AMOUNT IS NEGATIVE!!!");
-            var a = 4 / 0;
+            return
+        }
+        if (!this.isValidCoord(pos)) {
+            console.log("Invalid POS!");
+            return
         }
 
         var found = false;
@@ -250,7 +292,13 @@ export class Field {
         if (this.isFree(cr.pos)) {
             cr.field = this;
             this._creatures.push(cr);
+            this.occupy(cr.pos);
+            this._born++;
         }
+        else {
+            console.log("not free!?");
+        }
+     
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -266,7 +314,6 @@ export class Field {
     // ---------------------------------------------------------------------------------------------
     // ticke: advance one clock cycle
     public tick() {
-        console.log("Tick");
         // tick every creature
         this._creatures.forEach(creature => creature.tick());
 
@@ -277,16 +324,22 @@ export class Field {
             if (creature.dead) {
                 bodycount++;
                 keep = false;
-                this.addFood(creature.pos, Math.max(Math.floor(creature.energy / 2), 0))
+                var crfood =Math.floor(creature.energy / 2);
+                crfood = Math.max(crfood,0);
+                crfood = Math.min(crfood,20);
+                this.addFood(creature.pos, crfood)
+                this.free(creature.pos);
             }
             return keep;
         });
-
-        if (bodycount > 0) {
-            for (var i = 0; i < bodycount; i++) {
+        var oldborn = this._born;
+        this._born=0;
+        if (this.population < this.minPopulation) {
+            for (var i = this.population; i < this.minPopulation; i++) {
                 this.addCreature();
             }
-        }
+        } 
+        console.log("Popul : "+this.population);
     }
 
     // ---------------------------------------------------------------------------------------------
